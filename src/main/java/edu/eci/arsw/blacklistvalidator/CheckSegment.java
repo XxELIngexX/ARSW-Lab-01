@@ -30,32 +30,11 @@ public class CheckSegment implements Runnable{
             if (skds.isInBlackListServer(i, ipaddress)){
                 blackListOcurrence.add(i);
             }
-            synchronized (this) {
-                finished = true;
-            }
         }
+        System.out.println("se encontraron: "+blackListOcurrence.size());
     }    
     
-    public synchronized ArrayList<Integer> getBlackListOcurrence(){
-        try {
-            while (!finished) {
-                wait ();
-            }
-        } catch (InterruptedException e){
-            System.out.println(hilo.getName()+"Interupted");
-        }
-        return blackListOcurrence;
-    }
 
-   
-    public synchronized int getOccurence(){
-        try {
-            while (!finished) {
-                wait();
-            }
-        }catch (InterruptedException e){
-            System.out.println(hilo.getName()+"Interupted");
-        }
-        return blackListOcurrence.size();
-    }
+
+
 }

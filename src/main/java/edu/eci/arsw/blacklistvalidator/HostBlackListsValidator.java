@@ -6,6 +6,8 @@
 package edu.eci.arsw.blacklistvalidator;
 
 import edu.eci.arsw.spamkeywordsdatasource.HostBlacklistsDataSourceFacade;
+
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
@@ -29,7 +31,7 @@ public class HostBlackListsValidator {
      * @param ipaddress suspicious host's IP address.
      * @return  Blacklists numbers where the given host's IP address was found.
      */
-    public List<Integer> checkHost(String ipaddress){
+    public List<Integer> checkHost(String ipaddress, int numThreads) throws InterruptedException {
         
         LinkedList<Integer> blackListOcurrences=new LinkedList<>();
         
@@ -39,17 +41,63 @@ public class HostBlackListsValidator {
         
         int checkedListsCount=0;
         
-        for (int i=0;i<skds.getRegisteredServersCount() && ocurrencesCount<BLACK_LIST_ALARM_COUNT;i++){
-            checkedListsCount++;
-            
-            if (skds.isInBlackListServer(i, ipaddress)){
-                
-                blackListOcurrences.add(i);
-                
-                ocurrencesCount++;
+//        for (int i=0;i<skds.getRegisteredServersCount() && ocurrencesCount<BLACK_LIST_ALARM_COUNT;i++){
+//            checkedListsCount++;
+//
+//            if (skds.isInBlackListServer(i, ipaddress)){
+//
+//                blackListOcurrences.add(i);
+//
+//                ocurrencesCount++;
+//            }
+//        }
+        //cantidad de hilos que se desean usar
+        int partes = numThreads;
+        // cantidad de listas que va a manejar cada hilo
+        int rangos = skds.getRegisteredServersCount() / partes;
+        // almacenar todos los hilos, para simplificar la tarea de creacion
+        ArrayList<Thread> hilos = new ArrayList<>();
+
+        int residuo=skds.getRegisteredServersCount() % partes;
+        int residuoCont = 1;
+
+
+
+        //contador para dividir los rangos
+        int cont = 0 ;
+
+        //crear la cantidad de hilos, segun el numero pedido en el codigo
+        for(int i = 0;i<partes;i++) {
+            //por si es impar
+            if ( residuo != 0) {
+                if (residuoCont<=residuo) {
+                    hilos.add(new Thread(new CheckSegment(cont, (cont + rangos+1), ipaddress)));
+                    cont += rangos+1;
+                    residuoCont++;
+                }else {
+                    hilos.add(new Thread(new CheckSegment(cont, (cont + rangos+1), ipaddress)));
+                    cont += rangos;
+                }
+            }
+            // por si es par
+            else {
+                hilos.add(new Thread(new CheckSegment(cont, (cont + rangos+1), ipaddress)));
+                cont += rangos;
             }
         }
-        
+
+        for(Thread hilo : hilos){
+            hilo.start();
+        }
+
+        for(Thread hilo : hilos){
+            hilo.join();
+        }
+        System.out.println("---------todos los hilos terminaron------------");
+
+
+
+
         if (ocurrencesCount>=BLACK_LIST_ALARM_COUNT){
             skds.reportAsNotTrustworthy(ipaddress);
         }
