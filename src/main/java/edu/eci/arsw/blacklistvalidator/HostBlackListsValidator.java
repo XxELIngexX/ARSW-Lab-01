@@ -51,12 +51,14 @@ public class HostBlackListsValidator {
 //                ocurrencesCount++;
 //            }
 //        }
+
         //cantidad de hilos que se desean usar
         int partes = numThreads;
         // cantidad de listas que va a manejar cada hilo
         int rangos = skds.getRegisteredServersCount() / partes;
         // almacenar todos los hilos, para simplificar la tarea de creacion
         ArrayList<Thread> hilos = new ArrayList<>();
+        ArrayList<CheckSegment> checkSegments = new ArrayList<>();
 
         int residuo=skds.getRegisteredServersCount() % partes;
         int residuoCont = 1;
@@ -71,17 +73,23 @@ public class HostBlackListsValidator {
             //por si es impar
             if ( residuo != 0) {
                 if (residuoCont<=residuo) {
-                    hilos.add(new Thread(new CheckSegment(cont, (cont + rangos+1), ipaddress)));
+                    CheckSegment checkSegment = new CheckSegment(cont, (cont + rangos+1), ipaddress);
+                    checkSegments.add(checkSegment);
+                    hilos.add(new Thread(checkSegment));
                     cont += rangos+1;
                     residuoCont++;
                 }else {
-                    hilos.add(new Thread(new CheckSegment(cont, (cont + rangos+1), ipaddress)));
+                    CheckSegment checkSegment = new CheckSegment(cont, (cont + rangos+1), ipaddress);
+                    checkSegments.add(checkSegment);
+                    hilos.add(new Thread(checkSegment));
                     cont += rangos;
                 }
             }
             // por si es par
             else {
-                hilos.add(new Thread(new CheckSegment(cont, (cont + rangos+1), ipaddress)));
+                CheckSegment checkSegment = new CheckSegment(cont, (cont + rangos+1), ipaddress);
+                checkSegments.add(checkSegment);
+                hilos.add(new Thread(checkSegment));
                 cont += rangos;
             }
         }
@@ -94,8 +102,11 @@ public class HostBlackListsValidator {
             hilo.join();
         }
         System.out.println("---------todos los hilos terminaron------------");
-
-
+        
+         //sumar todas las ocurrencias en ocurrencesCount
+        for(CheckSegment checkSegment : checkSegments){
+            ocurrencesCount += checkSegment.getBlackListOcurrence().size();
+        }
 
 
         if (ocurrencesCount>=BLACK_LIST_ALARM_COUNT){

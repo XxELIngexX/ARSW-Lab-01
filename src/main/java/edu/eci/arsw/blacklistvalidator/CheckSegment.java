@@ -24,6 +24,10 @@ public class CheckSegment implements Runnable{
         finished = false;
     }
 
+    public ArrayList<Integer> getBlackListOcurrence() {
+        return blackListOcurrence;
+    }
+
     @Override
     public void run(){
         for (int i = start; i<= end; i++){
