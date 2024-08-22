@@ -1,44 +1,46 @@
 package edu.eci.arsw.blacklistvalidator;
 
-import java.util.ArrayList;
 import edu.eci.arsw.spamkeywordsdatasource.HostBlacklistsDataSourceFacade;
 
+import java.util.LinkedList;
+import java.util.List;
 
-public class CheckSegment implements Runnable{
-    
-    private ArrayList<Integer> blackListOcurrence;
-    private int start; 
-    private int end;
+/**
+ * CheckSegment class to check a segment of blacklist servers.
+ */
+public class CheckSegment extends Thread {
+
+    private HostBlacklistsDataSourceFacade dataSource;
+    private int startIndex;
+    private int endIndex;
     private String ipaddress;
-    public Thread hilo;
-    private HostBlacklistsDataSourceFacade skds;
-    private boolean finished;
+    private List<Integer> blacklists;
+    private int occurrences;
 
-    public CheckSegment (int start, int end, String ipaddress){
-        hilo = new Thread(this);
-        this.start = start;
-        this.end = end;
+    public CheckSegment(HostBlacklistsDataSourceFacade dataSource, int startIndex, int endIndex, String ipaddress) {
+        this.dataSource = dataSource;
+        this.startIndex = startIndex;
+        this.endIndex = endIndex;
         this.ipaddress = ipaddress;
-        blackListOcurrence = new ArrayList<>();
-        skds=HostBlacklistsDataSourceFacade.getInstance();
-        finished = false;
-    }
-
-    public ArrayList<Integer> getBlackListOcurrence() {
-        return blackListOcurrence;
+        this.blacklists = new LinkedList<>();
+        this.occurrences = 0;
     }
 
     @Override
-    public void run(){
-        for (int i = start; i<= end; i++){
-            if (skds.isInBlackListServer(i, ipaddress)){
-                blackListOcurrence.add(i);
+    public void run() {
+        for (int i = startIndex; i < endIndex; i++) {
+            if (dataSource.isInBlackListServer(i, ipaddress)) {
+                blacklists.add(i);
+                occurrences++;
             }
         }
-        System.out.println("se encontraron: "+blackListOcurrence.size());
-    }    
-    
+    }
 
+    public List<Integer> getBlacklists() {
+        return blacklists;
+    }
 
-
+    public int getOccurrences() {
+        return occurrences;
+    }
 }
