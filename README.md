@@ -3,6 +3,7 @@
 ### Arquitecturas de Software - ARSW
 ## Ejercicio Introducción al paralelismo - Hilos - Caso BlackListSearch
 
+## Realizado por: Hann Jang y Cesar David Amaya Gomez
 
 ### Dependencias:
 ####   Lecturas:
@@ -21,6 +22,14 @@
 	2. Inicie los tres hilos con 'start()'.
 	3. Ejecute y revise la salida por pantalla. 
 	4. Cambie el incio con 'start()' por 'run()'. Cómo cambia la salida?, por qué?.
+
+	Cuando se utiliza el método run(), los hilos se ejecutan de manera secuencial, es decir, uno tras otro, sin aprovechar el paralelismo. Esto significa que el segundo hilo no comenzará hasta que el primero haya terminado, y así sucesivamente. Por otro lado, al usar el método start(), los hilos se ejecutan de manera concurrente, permitiendo que el programa aproveche el paralelismo y la ejecución no sea determinista.
+
+3. Imagenes de Pruebas: 
+
+![Uso de run](img/threads_run.png)
+
+![Uso de start](img/threads_start.png)
 
 **Parte II - Ejercicio Black List Search**
 
@@ -61,15 +70,34 @@ Para 'refactorizar' este código, y hacer que explote la capacidad multi-núcleo
 
 La estrategia de paralelismo antes implementada es ineficiente en ciertos casos, pues la búsqueda se sigue realizando aún cuando los N hilos (en su conjunto) ya hayan encontrado el número mínimo de ocurrencias requeridas para reportar al servidor como malicioso. Cómo se podría modificar la implementación para minimizar el número de consultas en estos casos?, qué elemento nuevo traería esto al problema?
 
+Respuesta
+La estrategia de paralelismo antes implementada es ineficiente en ciertos casos, pues la búsqueda se sigue realizando aún cuando los N hilos (en su conjunto) ya hayan encontrado el número mínimo de ocurrencias requeridas para reportar al servidor como malicioso. 
+
+Para mejorar la eficiencia, podríamos introducir una comunicación entre los hilos que les permita detenerse tan pronto como se alcance el umbral necesario de ocurrencias. Para lograr esto, podríamos usar una barrera de comunicación, como un `CountDownLatch`, que permita que todos los hilos detengan sus búsquedas una vez que se haya alcanzado el umbral. 
+
+Otra técnica podría ser "Dividir y Conquistar" donde se dividiría el conjunto de servidores en segmentos más pequeños, donde cada segmento buscaría en paralelo. A medida que los hilos encuentren las ocurrencias necesarias, podrían detenerse y dejar de buscar en ese segmento, reduciendo así la cantidad total de búsquedas realizadas. En este último caso, se haría uso de `AtomicInteger` para contar las ocurrencias.
+
 **Parte III - Evaluación de Desempeño**
 
 A partir de lo anterior, implemente la siguiente secuencia de experimentos para realizar las validación de direcciones IP dispersas (por ejemplo 202.24.34.55), tomando los tiempos de ejecución de los mismos (asegúrese de hacerlos en la misma máquina):
 
 1. Un solo hilo.
+![un hilo](img/image.png)
+
 2. Tantos hilos como núcleos de procesamiento (haga que el programa determine esto haciendo uso del [API Runtime](https://docs.oracle.com/javase/7/docs/api/java/lang/Runtime.html)).
+
+![runtime ](img/pro1.png)
 3. Tantos hilos como el doble de núcleos de procesamiento.
+
+![doble hilo](img/prodoble1.png)
+
 4. 50 hilos.
+![50 hilo](img/pro50.png)
+
 5. 100 hilos.
+
+![100 hilo](img/pro100.png)
+
 
 Al iniciar el programa ejecute el monitor jVisualVM, y a medida que corran las pruebas, revise y anote el consumo de CPU y de memoria en cada caso. ![](img/jvisualvm.png)
 
@@ -81,9 +109,33 @@ Con lo anterior, y con los tiempos de ejecución dados, haga una gráfica de tie
 
 	![](img/ahmdahls.png), donde _S(n)_ es el mejoramiento teórico del desempeño, _P_ la fracción paralelizable del algoritmo, y _n_ el número de hilos, a mayor _n_, mayor debería ser dicha mejora. Por qué el mejor desempeño no se logra con los 500 hilos?, cómo se compara este desempeño cuando se usan 200?. 
 
+Si consideramos un escenario en el que P es 0.8 (80% del algoritmo es paralelizable) y calculamos la mejora teórica del desempeño para diferentes valores de n:
+
+- Con n = 1, S(1) = 1 (Sin paralelismo)
+- Con n = 2, S(2) = 1/0.6 = 1.67 (una mejora del 67% aproximadamente)
+- Con n = 500, S(500) = 1/0.0016 = 4.96 (una mejora del 396% aproximadamente)
+- Con n = 200, S(200) = 1/0.004 = 4.95 (una mejora del 395% aproximadamente)
+
+Podemos observar que a medida que n aumenta, la mejora teórica del desempeño se aproxima a un valor límite. Sin embargo, el incremento en el desempeño se vuelve cada vez más pequeño. En el caso de n=500, aunque la mejora es considerable, no es proporcional al número de hilos utilizados.
+
+Para 200 hilos, la mejora del desempeño es casi idéntica a la obtenida con 500 hilos, lo que demuestra que aumentar el número de hilos más allá de cierto punto no resulta en mejoras significativas de desempeño, debido a la fracción no paralelizable del algoritmo según la Ley de Amdahl.
+
+En realidad, el desempeño entre 500 hilos y 200 hilos no varía significativamente, por lo que usar una cantidad tan alta de hilos puede ser un desperdicio de recursos. Es importante identificar el punto en el que aumentar el número de hilos deja de ser beneficioso.
+
+
 2. Cómo se comporta la solución usando tantos hilos de procesamiento como núcleos comparado con el resultado de usar el doble de éste?.
+
+Cuando se utiliza un número de hilos de procesamiento igual al número de núcleos, la solución tiende a ser más eficiente. Cada hilo puede ejecutarse en un núcleo separado, lo que maximiza el uso de los recursos disponibles sin incurrir en la sobrecarga de planificación y conmutación de hilos.
+
+En contraste, al usar el doble de hilos que el número de núcleos, se intenta realizar un nivel de paralelismo mayor que la cantidad de recursos físicos disponibles. Esto puede resultar en una competencia entre hilos por el acceso a los núcleos de la CPU, lo que genera sobrecarga debido a la gestión de más hilos que núcleos. Como consecuencia, algunos hilos pueden experimentar retrasos mientras esperan su turno para ser ejecutados, lo que puede disminuir el rendimiento en comparación con el uso óptimo de hilos.
+
+En resumen, usar tantos hilos como núcleos suele ser más eficiente que usar el doble de hilos, ya que evita la sobrecarga de planificación y conmutación de hilos y permite un uso más efectivo de los recursos disponibles.
 
 3. De acuerdo con lo anterior, si para este problema en lugar de 100 hilos en una sola CPU se pudiera usar 1 hilo en cada una de 100 máquinas hipotéticas, la ley de Amdahls se aplicaría mejor?. Si en lugar de esto se usaran c hilos en 100/c máquinas distribuidas (siendo c es el número de núcleos de dichas máquinas), se mejoraría?. Explique su respuesta.
 
+Considerando lo anterior, si en lugar de utilizar 100 hilos en una sola CPU se pudiera usar 1 hilo en cada una de 100 máquinas hipotéticas, la Ley de Amdahl se aplicaría de manera más efectiva. Esto se debe a que cada hilo tendría acceso exclusivo a los recursos de una máquina completa, eliminando la competencia por los núcleos y reduciendo el overhead de planificación y conmutación de hilos.
 
+Por otro lado, si se usaran c hilos en 100/c máquinas distribuidas (donde c es el número de núcleos de dichas máquinas), también se mejoraría el rendimiento. En este caso, cada máquina estaría utilizando sus núcleos de manera óptima, y la carga de trabajo se distribuiría de manera más equilibrada. Esto reduciría la sobrecarga de gestión de hilos y permitiría un uso más eficiente de los recursos disponibles.
+
+En resumen, ambas estrategias mejorarían el rendimiento en comparación con el uso de 100 hilos en una sola CPU, ya que reducirían la competencia por los recursos y la sobrecarga de gestión de hilos, permitiendo un paralelismo más efectivo.
 
